@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Estado {
+  id         Int         @id @default(autoincrement())
+  codigo     String
+  nome       String
+  sigla      String
+  municipios Municipio[]
+
+  @@map("estado")
+}
+
+model Municipio {
+  id       Int    @id @default(autoincrement())
+  codigo   String
+  nome     String
+  estadoId Int    @map("estado_id")
+  estado   Estado @relation(fields: [estadoId], references: [id])
+
+  @@map("municipio")
+}
+
+model Usuario {
+  id             Int                 @id @default(autoincrement())
+  email          String              @unique
+  senha          String
+  nome           String
+  telefone       String?
+  dataNascimento DateTime?           @map("data_nascimento") @db.Date
+  usuarioAtivo   Boolean             @default(true) @map("usuario_ativo")
+  roles          String[]            @default(["USER"])
+  dataCriacao    DateTime            @default(now()) @map("data_criacao")
+  dataAlteracao  DateTime            @updatedAt @map("data_alteracao")
+  passwordToken  PasswordResetToken?
+  socioId        Int?                @unique @map("socio")
+  socio          Socio?              @relation(fields: [socioId], references: [id])
+
+  @@map("usuario")
+}
+
+model Socio {
+  id                   Int                  @id @default(autoincrement())
+  cpfCnpj              String               @map("cpf_cnpj")
+  nome                 String
+  telefone             String?
+  email                String
+  documentoFullPath    String?              @map("documento_full_path")
+  tipoPessoa           Int                  @map("tipo_pessoa")
+  tipoSocio            Int                  @map("tipo_socio")
+  concordouEstatuto    Boolean              @map("concordou_estatuto")
+  endLogradouro        String?              @map("logradouro")
+  endNumero            Int?                 @map("numero")
+  endComplemento       String?              @map("complemento")
+  endBairro            String?              @map("bairro")
+  endCep               String?              @map("cep")
+  endMunicipioId       Int?                 @map("municipio_id")
+  dataCriacao          DateTime             @default(now()) @map("data_criacao")
+  dataAlteracao        DateTime             @updatedAt @map("data_alteracao")
+  usuario              Usuario?
+  unidadesConsumidoras UnidadeConsumidora[]
+
+  @@map("socio")
+}
+
+model UnidadeConsumidora {
+  id             Int      @id @default(autoincrement())
+  numeroCliente  String   @map("numero_cliente")
+  numeroUc       String   @map("numero_uc")
+  faturaFullPath String?  @map("fatura_full_path")
+  socioId        Int      @map("socio_id")
+  socio          Socio    @relation(fields: [socioId], references: [id])
+  endLogradouro  String?  @map("logradouro")
+  endNumero      Int?     @map("numero")
+  endComplemento String?  @map("complemento")
+  endBairro      String?  @map("bairro")
+  endCep         String?  @map("cep")
+  endMunicipioId Int?     @map("municipio_id")
+  dataCriacao    DateTime @default(now()) @map("data_criacao")
+  dataAlteracao  DateTime @updatedAt @map("data_alteracao")
+
+  @@map("unidade_consumidora")
+}
+
+model PasswordResetToken {
+  id            Int      @id @default(autoincrement())
+  token         String   @unique
+  dataExpiracao DateTime @map("data_expiracao")
+  usuarioId     Int      @unique @map("usuario_id")
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@map("password_reset_token")
+}
