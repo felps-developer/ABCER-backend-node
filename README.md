@@ -1,98 +1,160 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# ABCER Backend — NestJS
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Reimplementação do backend legado Java/Spring Boot do sistema ABCER em **NestJS 11 + TypeScript**, desenvolvida como parte do TCC *"A Abordagem SDD na Modernização de Sistemas Legados em Java"* (UNIFOR, 2026).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Visão Geral
 
-## Description
+| Item | Detalhe |
+|---|---|
+| Framework | NestJS 11 |
+| Linguagem | TypeScript 5 |
+| ORM | Prisma 7 + PrismaPg adapter |
+| Banco | PostgreSQL 16 |
+| Autenticação | JWT RS512 via `jose`, cookie HttpOnly `ABCER_JWT_TOKEN` |
+| Hash | BCrypt v6 |
+| Upload | multer (disco local em `uploads/{cpfCnpj}/`) |
+| Porta padrão | 3000 (dev) / 3001 (Docker) |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Endpoints implementados
 
-## Project setup
+| Módulo | Endpoints |
+|---|---|
+| Endereço | `GET /estado/todos`, `GET /estado/:id/municipios`, `GET /estado/cep/:cep` |
+| Usuário | `POST /logar`, `POST /logout`, `GET /isAuthenticated`, `GET /user-info`, `POST /enviarLinkNovaSenha`, `POST /trocarSenha` |
+| Sócio | `POST /socio/incluir`, `GET /socio/logado`, `GET /socio/todos`, `PUT /socio`, `DELETE /socio/:id` |
+| UC | `GET /uc/todosPaginados`, `GET /uc/:id`, `GET /uc/:id/fatura`, `POST /uc/salvar`, `DELETE /uc/:id` |
 
-```bash
-$ npm install
-```
+---
 
-## Compile and run the project
+## Pré-requisitos
 
-```bash
-# development
-$ npm run start
+- Node.js >= 20
+- npm >= 10
+- Docker e Docker Compose (para subir o PostgreSQL)
+- OpenSSL (para gerar as chaves RSA)
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
-```
+## Configuração do ambiente
 
-## Run tests
+### 1. Copie o arquivo de variáveis de ambiente
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+cp .env.example .env
 ```
 
-## Deployment
+Crie o arquivo `.env` na raiz do projeto com o conteúdo abaixo:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+```env
+# Banco de dados
+POSTGRES_USER=abcer
+POSTGRES_PASSWORD=abcer
+DATABASE_URL="postgresql://abcer:abcer@localhost:5432/abcerDB?schema=abcer"
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+PORT=3000
+
+# reCAPTCHA — true desativa a validação (ambiente de desenvolvimento)
+RECAPTCHA_BYPASS=true
+RECAPTCHA_SECRET_KEY=
+
+# URL base da aplicação (usada nos links de e-mail)
+SITE_URL=http://localhost:3000
+
+# E-mail (deixe vazio para imprimir o link no console em vez de enviar)
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_USER=
+EMAIL_PASS=
+
+# JWT RS512 — deixe vazio para ler de keys/private.pem e keys/public.pem
+JWT_PRIVATE_KEY_PEM=
+JWT_PUBLIC_KEY_PEM=
+```
+
+### 2. Gere as chaves RSA
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+mkdir -p keys
+openssl genrsa -out keys/private.pem 2048
+openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Iniciando o projeto
 
-Check out a few resources that may come in handy when working with NestJS:
+### Opção A — Desenvolvimento local
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+# 1. Instale as dependências
+npm install
 
-## Support
+# 2. Suba o PostgreSQL via Docker
+docker compose up postgres -d
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# 3. Execute as migrations e gere o client Prisma
+npx prisma migrate deploy
+npx prisma generate
 
-## Stay in touch
+# 4. (Opcional) Popule o banco com dados de teste
+npm run db:seed
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# 5. Inicie o servidor em modo watch
+npm run start:dev
+```
 
-## License
+A API estará disponível em `http://localhost:3000`.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Opção B — Docker Compose completo
+
+```bash
+# Sobe PostgreSQL + API NestJS em containers
+docker compose up --build
+```
+
+A API estará disponível em `http://localhost:3001`.
+
+> **Atenção:** No modo Docker, as chaves RSA precisam existir em `keys/` antes do build, ou as variáveis `JWT_PRIVATE_KEY_PEM` / `JWT_PUBLIC_KEY_PEM` devem estar preenchidas no `docker-compose.yml`.
+
+---
+
+## Testes
+
+```bash
+# Testes unitários
+npm run test
+
+# Testes com cobertura
+npm run test:cov
+
+# Testes e2e
+npm run test:e2e
+```
+
+---
+
+## Build para produção
+
+```bash
+npm run build
+npm run start:prod
+```
+
+---
+
+## Estrutura do projeto
+
+```
+src/
+├── common/          # Guards, filtros, decorators, serviços compartilhados
+├── endereco/        # Módulo de endereço (estados, municípios, CEP)
+├── usuario/         # Módulo de autenticação e usuário
+├── socio/           # Módulo de sócio
+├── unidade-consumidora/  # Módulo de UC
+├── prisma/          # PrismaService e PrismaModule
+└── main.ts
+prisma/
+├── schema.prisma
+├── migrations/
+└── seed.ts
+```
